@@ -2,7 +2,7 @@
 这是一个无人机配送外卖的优化项目代码，作者是向治宇（南通大学-人工智能与计算机学院）、冯雅婷（南京农业大学-经济与管理学院）、曹可欣（清华大学深圳国际研究生院-数据与信息研究院）、蔡茂华（上海大学-数理学院）、刘兴禄（香港大学-土木工程系）。
 
 # 相关论文摘要
-[点击下载 PDF 文件](https://github.com/yuzhiXiang56/Drone_delivery/raw/main/IEEM_2025_Drone_Delivery.pdf)
+[点击下载 PDF 文件](https://github.com/yuzhiXiang56/Drone_delivery/raw/IEEM_2025_Drone_Delivery.pdf)
 
 
 # 显示界面
