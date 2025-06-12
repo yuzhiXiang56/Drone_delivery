@@ -88,36 +88,25 @@ class ModelBuilder():
         """
         在这里定义外卖柜选址优化模型的约束条件
         """
-        # 约束条件1(外卖柜台最大数量约束)
         lhs1 = LinExpr(0)
         for i in range(len(self.data.home_dict.keys())):
             lhs1.addTerms(1, x[i])
         self.FLP_model.addConstr(lhs1 >= S, name="Constraint_1")
 
-        # 约束条件2(只有在 i 点分配了外卖柜才可以将订单 j 分配给外卖柜约束)
         for i in range(len(self.data.home_dict.keys())):
             for j in range(len(self.data.h3_data_dict.keys())):
                 self.FLP_model.addConstr(y[i, j] <= x[i], name="Constraint_2")
 
-        # 约束条件3(每个 i 向各个 j 所分配的比例和为 1)---------(fix 后使得该模型有可行解)
         for j in range(len(self.data.h3_data_dict.keys())):
             lhs3 = LinExpr(0)
             for i in range(len(self.data.home_dict.keys())):
                 lhs3.addTerms(1, y[i, j])
             self.FLP_model.addConstr(lhs3 + e[j] == 1, name="Constraint_3")
-
-        # 外卖柜距离订单目的地最大距离约束
+            
         for i in range(len(self.data.home_dict.keys())):
             for j in range(len(self.data.h3_data_dict.keys())):
                 if (d[i, j] >= 2):
                     self.FLP_model.addConstr(y[i, j] == 0, name="Constraint_4")
-
-        # # 使得模型可行解约束
-        # for j in range(len(self.data.h3_data_dict.keys())):
-        #     lhs5 = LinExpr(0)
-        #     for i in tqdm(range(len(self.data.home_dict.keys()))):
-        #         lhs5.addTerms(1, y[i, j])
-        #     self.FLP_model.addConstr(lhs5 + e[j] == 1, name="Constraint_5")
 
         print("========================= 约束条件设立成功！=========================")
 
@@ -390,32 +379,6 @@ class ModelBuilder():
                 name="Constraint_11"
             )
 
-        # """ 使( 静态模型--->动态模型 )而新增的约束条件 """
-        # for j in self.data.station_dict.keys():
-        #     if list(self.data.station_dict[j].assigned_and_scheduled_order_set):
-        #         # 使该模型变为动态模型而新增的约束条件for j in self.data.station_dict.keys():
-        #         lhs = LinExpr(0)
-        #         for i in self.data.order_set_instance.keys():
-        #             for m in range(len(self.data.locker_dict.keys())):
-        #                 # self.data.station_dict[j].assigned_and_scheduled_order_set: 第 j 个停机坪中的订单等待队列，初值为 0
-        #                 for k in range(1, len(self.data.station_dict[j].assigned_and_scheduled_order_set)):
-        #                     lhs.addTerms(1, self.x[i, j, k, m])
-        #         self.AP_model.addConstr(lhs == 0, name="Constraint_12")
-        #
-        #         # 只有当停机坪中第 k-1 个位置有被分配时， 第 k 个位置才可以被分配
-        #         k_simulation = len(self.data.station_dict[j].assigned_and_scheduled_order_set)
-        #         for k in range(k_simulation, self.K):
-        #             lhs1 = LinExpr(0)
-        #             lhs2 = LinExpr(0)
-        #             for i in self.data.order_set_instance.keys():
-        #                 for m in range(len(self.data.locker_dict.keys())):
-        #                     lhs1.addTerms(1, self.x[i, j, k - 1, m])
-        #                     lhs2.addTerms(1, self.x[i, j, k, m])
-        #         self.AP_model.addConstr(lhs1 >= lhs2, name="Constraint_13")
-        #
-        #     else:
-        #         continue
-
 
         """========================= solving the model ========================="""
         if(TimeLimit == None):
@@ -502,6 +465,8 @@ class ModelBuilder():
         print("          求解参数设置成功           ")
         print("========================================")
 
+
+    
     def build_AP_model_with_cut(
             self,
             Expr_id=None,
@@ -682,15 +647,7 @@ class ModelBuilder():
                         lhs.addTerms(1, self.x[i, j, k, m])
 
             self.AP_model.addConstr(lhs == 1, name=f"Constraint_1_{i}")
-
-        # # 对于任一订单 i ，在任一停机坪 j 中最多之占用一个派单顺序位置 k
-        # for i in self.data.order_set_instance.keys():
-        #     for j in self.data.station_dict.keys():
-        #         lhs = LinExpr(0)
-        #         for k in range(self.K):
-        #             for m in range(len(self.data.locker_dict.keys())):
-        #                 lhs.addTerms(1, self.x[i, j, k, m])
-        #         self.AP_model.addConstr(lhs <= 1, name=f"Constraint_2}")
+            
         #对于候选locker来说，只会配送到距离客户位置小于某个值的locker
         for i in self.data.order_set_instance.keys():
             lhs = LinExpr(0)
@@ -709,17 +666,6 @@ class ModelBuilder():
                     for m in list(self.data.locker_dict.keys()):
                         lhs.addTerms(1, self.x[i, j, k, m])
                 self.AP_model.addConstr(lhs <= 1, name=f"Constraint_2_{j}_{k}")
-
-
-       # # 对于每个订单 i 的等待时间约束刻画
-       #  for i in self.data.order_set_instance.keys():
-       #      lhs = LinExpr(0)
-       #      for j in self.data.station_dict.keys():
-       #          for k in range(self.K):
-       #              for m in range(len(self.data.locker_dict.keys())):
-       #                  # lhs.addTerms(1, k * x[i, j, k, m])
-       #                  lhs.addTerms(k, self.x[i, j, k, m])
-       #      self.AP_model.addConstr(self.p[i] == lhs, name="Constraint_5")
 
         # 对任一停机坪的第 k 个位置: 订单离开时间 >= 订单发起时间 + 停机坪接受订单时间
         for j in self.data.station_dict.keys():
@@ -745,34 +691,6 @@ class ModelBuilder():
                     name=f"Constraint_5_{j}_{k}"
                 )
 
-        # RT[j, 0] >= sum x[i, j, 0, m] * (start_time[i] + accept_time[i, j])
-        # 任一停机坪的第 0 个位置的离开时间 >= (被指派到该 0 位置)订单的发起时间 + (被指派到该 0 位置)停机坪接收订单时间
-        # for j in self.data.station_dict.keys():
-        #     lhs = LinExpr(0)
-        #     lhs2 = LinExpr(0)
-        #     for i in self.data.order_set_instance.keys():
-        #         for m in range(len(self.data.locker_dict.keys())):
-        #             coef = self.start_time[i] + self.accept_time[i, j]
-        #             lhs.addTerms(coef, self.x[i, j, 0, m])
-        #     self.AP_model.addConstr(
-        #         self.RT[j, 0] >= lhs,
-        #         name="Constraint_8"
-        #     )
-
-        # # 对于任一订单，他从停机坪中某个位置的离开时间 <= 该订单的开始配送时间
-        # for i in self.data.order_set_instance.keys():
-        #     for j in self.data.station_dict.keys():
-        #         for k in range(self.K):
-        #             lhs = LinExpr(0)
-        #             for m in range(len(self.data.locker_dict.keys())):
-        #                 lhs.addTerms(1, self.x[i, j, k, m])
-        #
-        #             # if lhs = 1, then RT[j, k] <= a[i]
-        #             self.AP_model.addConstr(
-        #                 self.a[i] - self.RT[j, k] <= 1440 * (1 - lhs),
-        #                 name=f"Constraint_6_{i}_{j}_{k}"
-        #             )
-
         # 对于每个订单 i: 从 j 停机坪的 k 位置离开时间 + 停机坪往外卖柜配送时间 <= 订单送达时间
         for i in self.data.order_set_instance.keys():
             for j in self.data.station_dict.keys():
@@ -792,31 +710,7 @@ class ModelBuilder():
                 name=f"Constraint_8_{i}"
             )
 
-        # """ 使( 静态模型--->动态模型 )而新增的约束条件 """
-        # for j in self.data.station_dict.keys():
-        #     if list(self.data.station_dict[j].assigned_and_scheduled_order_set):
-        #         # 使该模型变为动态模型而新增的约束条件for j in self.data.station_dict.keys():
-        #         lhs = LinExpr(0)
-        #         for i in self.data.order_set_instance.keys():
-        #             for m in range(len(self.data.locker_dict.keys())):
-        #                 # self.data.station_dict[j].assigned_and_scheduled_order_set: 第 j 个停机坪中的订单等待队列，初值为 0
-        #                 for k in range(1, len(self.data.station_dict[j].assigned_and_scheduled_order_set)):
-        #                     lhs.addTerms(1, self.x[i, j, k, m])
-        #         self.AP_model.addConstr(lhs == 0, name="Constraint_12")
-        #
-        #         # 只有当停机坪中第 k-1 个位置有被分配时， 第 k 个位置才可以被分配
-        #         k_simulation = len(self.data.station_dict[j].assigned_and_scheduled_order_set)
-        #         for k in range(k_simulation, self.K):
-        #             lhs1 = LinExpr(0)
-        #             lhs2 = LinExpr(0)
-        #             for i in self.data.order_set_instance.keys():
-        #                 for m in range(len(self.data.locker_dict.keys())):
-        #                     lhs1.addTerms(1, self.x[i, j, k - 1, m])
-        #                     lhs2.addTerms(1, self.x[i, j, k, m])
-        #         self.AP_model.addConstr(lhs1 >= lhs2, name="Constraint_13")
-        #
-        #     else:
-        #         continue
+
         self.cuts_num = {'cut1_num': 0, 'cut2_num': 0, 'cut3_num': 0, 'obj_lb_num': 0}
         """========================= obj_lb ========================="""
         min_order_time = {}
@@ -1337,24 +1231,7 @@ class ModelBuilder():
                 self.dt[i] >= self.b[i] - self.start_time[i],
                 name=f"Constraint_8_{i}"
             )
-
-        # """ 使( 静态模型--->动态模型 )而新增的约束条件 """
-        # for j in self.data.station_dict.keys():
-        #     if list(self.data.station_dict[j].assigned_and_scheduled_order_set):
-        #         # 使该模型变为动态模型而新增的约束条件for j in self.data.station_dict.keys():
-        #         lhs = LinExpr(0)
-        #         for i in self.data.order_set_instance.keys():
-        #             for m in list(self.data.locker_dict.keys()):
-        #                 # self.data.station_dict[j].assigned_and_scheduled_order_set: 第 j 个停机坪中的订单等待队列，初值为 0
-        #                 self.occupied_k = self.compute_waiting_for_delivery_order_num(self.data.station_dict[j])
-        #                 for k in range(self.occupied_k, len(self.data.station_dict[j].assigned_and_scheduled_order_set)):
-        #                     lhs.addTerms(1, self.x[i, j, k, m])
-        #         self.AP_model.addConstr(lhs == 0, name="Constraint_12")
-        #
-        #
-        #
-        #     else:
-        #         continue
+            
         self.cuts_num = {'cut1_num': 0, 'cut2_num': 0, 'cut3_num': 0, 'obj_lb_num': 0}
         """========================= obj_lb ========================="""
         min_order_time = {}
@@ -1372,109 +1249,14 @@ class ModelBuilder():
             # print(sum(min_order_time.values()))
 
 
-
-        """========================= cuts ========================="""
-        if self.cut_1:
-            # for j in self.data.station_dict.keys():
-            #     # 只有当停机坪中第 k-1 个位置有被分配时， 第 k 个位置才可以被分配
-            #     self.occupied_k = self.compute_waiting_for_delivery_order_num(self.data.station_dict[j])
-            #     # 排除k=0的情况
-            #     if self.occupied_k == 0:
-            #         self.occupied_k = 1
-            #     for k in range(self.occupied_k+1, self.K):
-            #         lhs1 = LinExpr(0)
-            #         lhs2 = LinExpr(0)
-            #         for i in self.data.order_set_instance.keys():
-            #             for m in list(self.data.locker_dict.keys()):
-            #                 lhs1.addTerms(1, self.x[i, j, k - 1, m])
-            #                 lhs2.addTerms(1, self.x[i, j, k, m])
-            #         self.AP_model.addConstr(lhs1 >= lhs2, name="Constraint_13")
-
-            # 对于任一停机坪 j 中的任一派单顺序位置 k 来说，只有当第 j 个停机坪的第 k-1 个位置使用后才有使用权
-            for j in self.data.station_dict.keys():
-                self.occupied_k = self.compute_waiting_for_delivery_order_num(self.data.station_dict[j])
-                # 排除k=0的情况
-                for k in range(self.occupied_k, self.K - 1):
-                    lhs1 = LinExpr(0)
-                    lhs2 = LinExpr(0)
-                    for i in self.data.order_set_instance.keys():
-                        for m in list(self.data.locker_dict.keys()):
-                            lhs1.addTerms(1, self.x[i, j, k, m])
-                            lhs2.addTerms(1, self.x[i, j, k + 1, m])
-                    self.AP_model.addConstr(lhs1 >= lhs2, name=f"Constraint_3_{j}_{k} or Non Skip Departure Inequality")
-                    self.cuts_num['cut1_num'] += 1
-
-        if self.cut_2:
-            l_best_for_j_flag = {(i, j): 10000 for i in self.data.order_set_instance.keys() for j in
-                                 self.data.station_dict.keys()}
-
-            l_best_for_j = {}
-            for i in self.data.order_set_instance.keys():
-                for j in self.data.station_dict.keys():
-                    for m in self.dis_d_l_true[i]:
-                        if self.delivery_time[j, m] <= l_best_for_j_flag[i, j]:
-                            l_best_for_j_flag[i, j] = self.delivery_time[j, m]
-                            l_best_for_j[i, j] = m
-
-            for i in self.data.order_set_instance.keys():
-                for j in self.data.station_dict.keys():
-                    for m in list(self.data.locker_dict.keys()):
-                        if m != l_best_for_j[i, j]:
-                            lhs1 = LinExpr(0)
-                            lhs2 = LinExpr(0)
-                            self.occupied_k = self.compute_waiting_for_delivery_order_num(self.data.station_dict[j])
-                            for k in range(self.occupied_k, self.K):
-                                lhs1.addTerms(1, self.x[i, j, k, l_best_for_j[i, j]])
-                                lhs2.addTerms(1, self.x[i, j, k, m])
-                            self.AP_model.addConstr(lhs1 >= lhs2, name=f"Nestest Locker Cuts {i} {j} {m}")
-                            self.cuts_num['cut2_num'] += 1
-
-        if self.cut_3:
-            l_best_for_j_flag = {(i, j): 10000 for i in self.data.order_set_instance.keys() for j in
-                                 self.data.station_dict.keys()}
-            l_best_for_j = {}
-            for i in self.data.order_set_instance.keys():
-                for j in self.data.station_dict.keys():
-                    for m in self.dis_d_l_true[i]:
-                        if self.delivery_time[j, m] <= l_best_for_j_flag[i, j]:
-                            l_best_for_j_flag[i, j] = self.delivery_time[j, m]
-                            l_best_for_j[i, j] = m
-
-            dominance_set = {}
-            for i in self.data.order_set_instance.keys():
-                per_dominance_list = []
-                for j in self.data.station_dict.keys():
-                    for h in self.data.station_dict.keys():
-                        if j != h:
-                            if (self.accept_time[i, j] + self.wait_time * (len(self.data.order_set_instance) - 1) +
-                                    l_best_for_j_flag[i, j] < self.accept_time[i, h]):
-                                per_dominance_list.append((j, h))
-                dominance_set[i] = per_dominance_list
-
-            for i in self.data.order_set_instance.keys():
-                for j, h in dominance_set[i]:
-                    lhs1 = LinExpr(0)
-                    lhs2 = LinExpr(0)
-                    self.occupied_k = self.compute_waiting_for_delivery_order_num(self.data.station_dict[j])
-                    for k in range(self.occupied_k, self.K):
-                        for m in list(self.data.locker_dict.keys()):
-                            lhs1.addTerms(1, self.x[i, j, k, m])
-                            lhs2.addTerms(1, self.x[i, h, k, m])
-                    self.AP_model.addConstr(lhs1 >= lhs2, name=f"Dominance Cuts {i} {j} {h}")
-                    self.cuts_num['cut3_num'] += 1
-
         """========================= solving the model ========================="""
         if(numerical_dict == None):
             self.AP_model.setParam("TimeLimit", 120)
         else:
             self.AP_model.setParam("TimeLimit", self.TimeLimit)
-        # self.AP_model.write('model.lp')
-
+            
         self.AP_model.update()
-        # self.opt_info = {'B_presolve_NumVars': self.AP_model.NumVars, 'B_presolve_NumConstrs': self.AP_model.NumConstrs,
-        # 'A_presolve_NumVars': self.AP_model.presolve().NumVars, 'A_presolve_NumConstrs': self.AP_model.presolve().NumConstrs}
-
-
+        
         self.AP_model.optimize()
 
         # 检查是否不可行
@@ -1509,7 +1291,6 @@ class ModelBuilder():
 
 
 
-    # 目前使用
     def build_AP_model_old_version_2(self, TimeLimit=None):
 
         """========================= creating model ========================="""
@@ -1623,15 +1404,6 @@ class ModelBuilder():
 
             self.AP_model.addConstr(lhs == 1, name=f"Constraint_1_{i}")
 
-        # # 对于任一订单 i ，在任一停机坪 j 中最多之占用一个派单顺序位置 k
-        # for i in self.data.order_set_instance.keys():
-        #     for j in self.data.station_dict.keys():
-        #         lhs = LinExpr(0)
-        #         for k in range(self.K):
-        #             for m in range(len(self.data.locker_dict.keys())):
-        #                 lhs.addTerms(1, self.x[i, j, k, m])
-        #         self.AP_model.addConstr(lhs <= 1, name=f"Constraint_2}")
-
         # 对于任一停机坪 j 中的任一派单顺序位置 k 来说，最多只能被一个订单 i 占用
         for j in self.data.station_dict.keys():
             for k in range(self.K):
@@ -1651,16 +1423,6 @@ class ModelBuilder():
                         lhs1.addTerms(1, self.x[i, j, k, m])
                         lhs2.addTerms(1, self.x[i, j, k + 1, m])
                 self.AP_model.addConstr(lhs1 >= lhs2, name=f"Constraint_3_{j}_{k}")
-
-       # # 对于每个订单 i 的等待时间约束刻画
-       #  for i in self.data.order_set_instance.keys():
-       #      lhs = LinExpr(0)
-       #      for j in self.data.station_dict.keys():
-       #          for k in range(self.K):
-       #              for m in range(len(self.data.locker_dict.keys())):
-       #                  # lhs.addTerms(1, k * x[i, j, k, m])
-       #                  lhs.addTerms(k, self.x[i, j, k, m])
-       #      self.AP_model.addConstr(self.p[i] == lhs, name="Constraint_5")
 
         # 对任一停机坪的第 k 个位置: 订单离开时间 >= 订单发起时间 + 停机坪接受订单时间
         for j in self.data.station_dict.keys():
@@ -1685,20 +1447,6 @@ class ModelBuilder():
                     self.RT[j, k - 1] + lhs * self.wait_time <= self.RT[j, k],
                     name=f"Constraint_5_{j}_{k}"
                 )
-
-        # RT[j, 0] >= sum x[i, j, 0, m] * (start_time[i] + accept_time[i, j])
-        # 任一停机坪的第 0 个位置的离开时间 >= (被指派到该 0 位置)订单的发起时间 + (被指派到该 0 位置)停机坪接收订单时间
-        # for j in self.data.station_dict.keys():
-        #     lhs = LinExpr(0)
-        #     lhs2 = LinExpr(0)
-        #     for i in self.data.order_set_instance.keys():
-        #         for m in range(len(self.data.locker_dict.keys())):
-        #             coef = self.start_time[i] + self.accept_time[i, j]
-        #             lhs.addTerms(coef, self.x[i, j, 0, m])
-        #     self.AP_model.addConstr(
-        #         self.RT[j, 0] >= lhs,
-        #         name="Constraint_8"
-        #     )
 
         # 对于任一订单，他从停机坪中某个位置的离开时间 <= 该订单的开始配送时间
         for i in self.data.order_set_instance.keys():
@@ -1733,33 +1481,6 @@ class ModelBuilder():
                 name=f"Constraint_8_{i}"
             )
 
-        # """ 使( 静态模型--->动态模型 )而新增的约束条件 """
-        # for j in self.data.station_dict.keys():
-        #     if list(self.data.station_dict[j].assigned_and_scheduled_order_set):
-        #         # 使该模型变为动态模型而新增的约束条件for j in self.data.station_dict.keys():
-        #         lhs = LinExpr(0)
-        #         for i in self.data.order_set_instance.keys():
-        #             for m in range(len(self.data.locker_dict.keys())):
-        #                 # self.data.station_dict[j].assigned_and_scheduled_order_set: 第 j 个停机坪中的订单等待队列，初值为 0
-        #                 for k in range(1, len(self.data.station_dict[j].assigned_and_scheduled_order_set)):
-        #                     lhs.addTerms(1, self.x[i, j, k, m])
-        #         self.AP_model.addConstr(lhs == 0, name="Constraint_12")
-        #
-        #         # 只有当停机坪中第 k-1 个位置有被分配时， 第 k 个位置才可以被分配
-        #         k_simulation = len(self.data.station_dict[j].assigned_and_scheduled_order_set)
-        #         for k in range(k_simulation, self.K):
-        #             lhs1 = LinExpr(0)
-        #             lhs2 = LinExpr(0)
-        #             for i in self.data.order_set_instance.keys():
-        #                 for m in range(len(self.data.locker_dict.keys())):
-        #                     lhs1.addTerms(1, self.x[i, j, k - 1, m])
-        #                     lhs2.addTerms(1, self.x[i, j, k, m])
-        #         self.AP_model.addConstr(lhs1 >= lhs2, name="Constraint_13")
-        #
-        #     else:
-        #         continue
-
-
         """========================= solving the model ========================="""
         if(TimeLimit == None):
             self.AP_model.setParam("TimeLimit", 120)
@@ -1790,235 +1511,6 @@ class ModelBuilder():
                             print(f'  {self.start_time[i]} ', end='        ')
                             print(f'  {round(self.delivery_time[j, m], 3)} ', end='       ')
                             print(f'  {round(self.b[i].x, 3)}  ')
-
-
-
-
-    # def build_AP_model(self, TimeLimit=None):
-    #
-    #     """========================= creating model ========================="""
-    #     self.AP_model = Model("Assignment_Problem")
-    #
-    #
-    #     """========================= define parameter ========================="""
-    #     self.K = 50                          # 每个停机坪最多可容纳订单量
-    #     self.accept_time = {}                # accept_time[i, j]: 订单 i 外卖商家到停机坪 j 的时间
-    #     self.delivery_time = {}              # delivery_time[j, m]: 订单 i 从停机坪 j 到外卖柜 m 的时间
-    #     self.dis = {}                        # dis[x, y]: 用于计算 x, y 两地点之间的距离
-    #     self.start_time = {}                 # start_time[i]:每个订单 i 的 产生时间
-    #     self.drone_speed = 83                # 无人机飞行速度
-    #     self.delivery_person_speed = 20      # 外卖小哥配送速度
-    #     self.wait_time = 1                   # 同一个停机坪每个订单开始配送的时间窗
-    #
-    #
-    #     # 定义外卖商家到停机坪的时间参数 (T_i_j)
-    #     for i in self.data.order_set_instance.keys():
-    #         for j in self.data.station_dict.keys():
-    #             self.dis[i, j] = self.data.compute_geo_dis(
-    #                 lng1=self.data.order_set_instance[i].org_lng,
-    #                 lat1=self.data.order_set_instance[i].org_lat,
-    #                 lng2=self.data.station_dict[j].lng,
-    #                 lat2=self.data.station_dict[j].lat
-    #             )
-    #             self.accept_time[i, j] = 60 * self.dis[i, j] / self.delivery_person_speed
-    #
-    #     # 定义停机坪到外卖柜的时间参数 (T_j_m)
-    #     for j in self.data.station_dict.keys():
-    #         for m in range(len(self.data.locker_dict.keys())):
-    #             self.dis[j, m] = self.data.compute_geo_dis(
-    #                 lng1=self.data.station_dict[j].lng,
-    #                 lat1=self.data.station_dict[j].lat,
-    #                 lng2=self.data.locker_dict[m].lng,
-    #                 lat2=self.data.locker_dict[m].lat
-    #             )
-    #             self.delivery_time[j, m] = 60 * self.dis[j, m] / self.drone_speed
-    #
-    #     # 定义第 i 个订单的发起时间 (S_i)
-    #     for i in self.data.order_set_instance.keys():
-    #         self.start_time[i] = self.data.order_set_instance[i].start_time
-    #
-    #
-    #     """========================= define decision variables ========================="""
-    #     self.x = {}         # x[i, j, k, m]: 订单分配决策变量
-    #
-    #     self.p = {}         # p[i]: 第 i 个订单在停机坪的等待时间
-    #     self.RT = {}        # RT[j, k]: 任一订单从第 j 个停机坪的第 k 个位置的离开时间
-    #     self.a = {}         # a[i]: 第 i 个订单的开始配送时间（停机坪-外卖柜）
-    #     self.b = {}         # b[i]: 第 i 个订单送至外卖柜的时间
-    #     self.dt = {}        # dt[i]: 第 i 个订单从发起到配送至外卖柜的时间
-    #
-    #     # 决定第 i 个订单是否被指派到第 j 个停机坪的第 k 个位置，并配送至第 m 个外卖柜的决策变量
-    #     for i in tqdm(self.data.order_set_instance.keys()):
-    #         for j in self.data.station_dict.keys():
-    #             for k in range(self.K):
-    #                 for m in range(len(self.data.locker_dict.keys())):
-    #                     self.x[i, j, k, m] = self.AP_model.addVar(
-    #                         lb=0, ub=1,
-    #                         vtype=GRB.BINARY,
-    #                         name=f"Decision variables: x_{i}_{j}_{k}_{m}"
-    #                     )
-    #
-    #     # 任一订单离开第 j 个停机坪中第 k 个位置的时间
-    #     for j in self.data.station_dict.keys():
-    #         for k in range(self.K):
-    #             self.RT[j, k] = self.AP_model.addVar(
-    #                 lb=0, ub=1440,
-    #                 vtype=GRB.CONTINUOUS,
-    #                 name=f"Decision variables: RT_{j}_{k}"
-    #             )
-    #
-    #     # 决策变量的定义
-    #     for i in self.data.order_set_instance.keys():
-    #         self.a[i] = self.AP_model.addVar(
-    #             lb=0, ub=1440,
-    #             vtype=GRB.CONTINUOUS,
-    #             name=f"Decision variables: a_{i}"
-    #         )   # 订单 i 的开始配送时间（停机坪-外卖柜）
-    #         self.b[i] = self.AP_model.addVar(
-    #             lb=0, ub=1440,
-    #             vtype=GRB.CONTINUOUS,
-    #             name=f"Decision variables: b_{i}"
-    #         )   # 订单 i 送达外卖柜的时间
-    #
-    #         self.dt[i] = self.AP_model.addVar(
-    #             lb=0, ub=1440,
-    #             vtype=GRB.CONTINUOUS,
-    #             name=f"Decision variables: b_{i}"
-    #         )   # 订单 i 从商家发起到送达外卖柜的时间戳
-    #
-    #
-    #     """========================= creating an objective function ========================="""
-    #     # 优化方向：使得所有订单从发起到送达的时间戳总和最小
-    #     obj = LinExpr(0)
-    #     for i in tqdm(self.data.order_set_instance.keys()):
-    #         obj.addTerms(1, self.dt[i])
-    #
-    #     self.AP_model.setObjective(obj, GRB.MINIMIZE)
-    #
-    #
-    #     """========================= describe constraints ========================="""
-    #     # 决策变量总和为 1
-    #     for i in self.data.order_set_instance.keys():
-    #         lhs = LinExpr(0)
-    #         for j in self.data.station_dict.keys():
-    #             for k in range(self.K):
-    #                 for m in range(len(self.data.locker_dict.keys())):
-    #                     lhs.addTerms(1, self.x[i, j, k, m])
-    #
-    #         self.AP_model.addConstr(lhs == 1, name=f"Constraint_1_{i}")
-    #
-    #     # 对于任一停机坪 j 中的任一派单顺序位置 k 来说，最多只能被一个订单 i 占用
-    #     for j in self.data.station_dict.keys():
-    #         for k in range(self.K):
-    #             lhs = LinExpr(0)
-    #             for i in self.data.order_set_instance.keys():
-    #                 for m in range(len(self.data.locker_dict.keys())):
-    #                     lhs.addTerms(1, self.x[i, j, k, m])
-    #             self.AP_model.addConstr(lhs <= 1, name=f"Constraint_2_{j}_{k}")
-    #
-    #     # 对于任一停机坪 j 中的任一派单顺序位置 k 来说，只有当第 j 个停机坪的第 k-1 个位置使用后才有使用权
-    #     for j in self.data.station_dict.keys():
-    #         for k in range(self.K - 1):
-    #             lhs1 = LinExpr(0)
-    #             lhs2 = LinExpr(0)
-    #             for i in self.data.order_set_instance.keys():
-    #                 for m in range(len(self.data.locker_dict.keys())):
-    #                     lhs1.addTerms(1, self.x[i, j, k, m])
-    #                     lhs2.addTerms(1, self.x[i, j, k + 1, m])
-    #             self.AP_model.addConstr(lhs1 >= lhs2, name=f"Constraint_3_{j}_{k}")
-    #
-    #     # 对任一停机坪的第 k 个位置: 订单离开时间 >= 订单发起时间 + 停机坪接受订单时间
-    #     for j in self.data.station_dict.keys():
-    #         for k in range(self.K):
-    #             lhs = LinExpr(0)
-    #             for i in self.data.order_set_instance.keys():
-    #                 for m in range(len(self.data.locker_dict.keys())):
-    #                     lhs.addTerms(self.start_time[i] + self.accept_time[i, j], self.x[i, j, k, m])
-    #             self.AP_model.addConstr(
-    #                 self.RT[j, k] >= lhs,
-    #                 name=f"Constraint_4_{j}_{k}"
-    #             )
-    #
-    #     # 对于任一停机坪的第 k 个位置，需满足: 第 k-1 个位置订单的离开时间 + 时间窗 <= 第 k 个位置订单的离开时间
-    #     for j in self.data.station_dict.keys():
-    #         for k in range(1, self.K):
-    #             lhs = LinExpr(0)
-    #             for i in self.data.order_set_instance.keys():
-    #                 for m in range(len(self.data.locker_dict.keys())):
-    #                     lhs.addTerms(1, self.x[i, j, k, m])
-    #             self.AP_model.addConstr(
-    #                 self.RT[j, k - 1] + lhs * self.wait_time <= self.RT[j, k],
-    #                 name=f"Constraint_5_{j}_{k}"
-    #             )
-    #
-    #     # 对于任一订单，他从停机坪中某个位置的离开时间 <= 该订单的开始配送时间
-    #     for i in self.data.order_set_instance.keys():
-    #         for j in self.data.station_dict.keys():
-    #             for k in range(self.K):
-    #                 lhs = LinExpr(0)
-    #                 for m in range(len(self.data.locker_dict.keys())):
-    #                     lhs.addTerms(1, self.x[i, j, k, m])
-    #
-    #                 # if lhs = 1, then RT[j, k] <= a[i]
-    #                 self.AP_model.addConstr(
-    #                     self.a[i] - self.RT[j, k] <= 1440 * (1 - lhs),
-    #                     name=f"Constraint_6_{i}_{j}_{k}"
-    #                 )
-    #
-    #     # 对于每个订单 i: 从 j 停机坪的 k 位置离开时间 + 停机坪往外卖柜配送时间 <= 订单送达时间
-    #     for i in self.data.order_set_instance.keys():
-    #         for j in self.data.station_dict.keys():
-    #             for k in range(self.K):
-    #                 for m in range(len(self.data.locker_dict.keys())):
-    #
-    #                     # if x[i,j,k,m] = 1, then RT[j, k] + delivery_time <= b[i]
-    #                     self.AP_model.addConstr(
-    #                         self.RT[j, k] + self.delivery_time[j, m] - self.b[i] <= 1440 * (1 - self.x[i, j, k, m]),
-    #                         name=f"Constraint_7_{i}_{j}_{k}_{m}"
-    #                     )
-    #
-    #     # 对于每个订单 i: 全程时间戳 >= 送达时间 - 发起时间
-    #     for i in self.data.order_set_instance.keys():
-    #         self.AP_model.addConstr(
-    #             self.dt[i] >= self.b[i] - self.start_time[i],
-    #             name=f"Constraint_8_{i}"
-    #         )
-    #
-    #     #
-    #     for i in self.data.order_set_instance.keys():
-    #         for j in self.data.station_dict.keys():
-    #             for m in range(len(self.data.locker_dict.keys())):
-    #                 x = 1
-    #
-    #
-    #     """========================= solving the model ========================="""
-    #     if(TimeLimit == None):
-    #         self.AP_model.setParam("TimeLimit", 120)
-    #     else:
-    #         self.AP_model.setParam("TimeLimit", TimeLimit)
-    #     # self.AP_model.write('model.lp')
-    #     self.AP_model.optimize()
-    #
-    #
-    #     """========================= visual of solution results ========================="""
-    #     print(f"ObjVal: {self.AP_model.ObjVal}")
-    #     for j in self.data.station_dict.keys():
-    #         print(f"-------- 停机坪 {j} ---------")
-    #         print("     x     |", end='')
-    #         print("   Value  |", end='')
-    #         print(" k   |", end='')
-    #         print(" Start Time | ", end = '')
-    #         print(" Delivery Time |", end='')
-    #         print(" Arrive Time |")
-    #         for k in range(self.K):
-    #             for i in self.data.order_set_instance.keys():
-    #                 for m in range(len(self.data.locker_dict.keys())):
-    #                     if (self.x[i, j, k, m].x >= 0.5):
-    #                         print(f'x_{i}_{j}_{k}_{m}:    {self.x[i, j, k, m].x}', end='  ')
-    #                         print(f'  {k} ', end='     ')
-    #                         print(f'  {self.start_time[i]} ', end='        ')
-    #                         print(f'  {round(self.delivery_time[j, m], 3)} ', end='       ')
-    #                         print(f'  {round(self.b[i].x, 3)}  ')
 
 
 
