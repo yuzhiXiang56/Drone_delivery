@@ -14,11 +14,11 @@ class Simulator():
 
     def __init__(self):
         self.data = None
-        self.unassigned_order_set = None        # 未被分配的订单数据
-        self.assigned_order_set = {}            # 已经被分配的订单数据
-        self.unfinished_order_set = {}          # 未完成的订单数据
-        self.finished_order_set = {}            # 已经结束的订单数据
-        self.idle_drone_set = {}                # 空闲的无人机数据
+        self.unassigned_order_set = None
+        self.assigned_order_set = {}
+        self.unfinished_order_set = {}
+        self.finished_order_set = {}
+        self.idle_drone_set = {}
 
         self.system_minute = 0
         self.start_minute = None
